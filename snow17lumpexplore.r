@@ -58,6 +58,19 @@ snow17 <- function(par, prcp, tavg, elev, doy, ini.states = c(0, 0, 0, 0)) {
       RAIN <- p_i
     }
     
+    # DENSITY OF NEW SNOW [g/cm^3]
+    
+    if (t_i <= -15) {
+      p_newsnow <- 0.05 
+      }
+      else {
+      p_newsnow <- 0.05 + 0.0017* t_i^1.5
+      }
+    
+    # DEPTH OF NEW SNOW [cm]
+    
+    depth_newsnow  = (0.1 * swe_newsnow)/p_newsnow
+    
     # ACCUMULATION OF THE SNOW COVER
     swe_newsnow_gadj <- swe_newsnow * SCF  # water equivalent of new snowfall [mm] (gauge deficiency corrected)
     swe_solids <- swe_solids + swe_newsnow_gadj   # water equivalent of the ice portion of the snow cover [mm]

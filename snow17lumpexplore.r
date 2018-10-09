@@ -111,7 +111,7 @@ snow17 <- function(par, prcp, tavg, elev, doy, ini.states = c(0, 0, 0, 0)) {
     
     # Snow Melt from the atmosphere
     t_rain <- max(t_i, 0)  # Temperature of rain (deg C), t_i or 0C, whichever greater
-    if (RAIN > 0.25 * dtp) {
+    if (RAIN > 0.25 * dtp) {  #for P rates of greater than .25 mm/hr (1.5 mm/6 hrs)
       # Rain-on-Snow Melt
       stefan <- 6.12 * (10^(-10))  # Stefan-Boltzman constant (mm/K/hr)
       e_sat <- 2.7489 * (10^8) * exp((-4278.63/(t_i + 242.792)))  # Saturated vapor pressure at t_i (mb)
@@ -122,12 +122,12 @@ snow17 <- function(par, prcp, tavg, elev, doy, ini.states = c(0, 0, 0, 0)) {
       melt_atmos <- term1 + term2 + term3
       melt_atmos <- max(melt_atmos, 0)
       
-    } else if ((RAIN <= 0.25 * dtp) && (t_i > MBASE)) {
+    } else if ((RAIN <= 0.25 * dtp) && (t_i > MBASE)) {  #for P rates <1.5 mm/6hrs when air temp > melt threshold
       # Non-Rain Melt
       melt_atmos <- (Mf * (t_i - MBASE) * (dtp/dtt)) + (0.0125 * RAIN * t_rain)
       melt_atmos <- max(melt_atmos, 0)
       
-    } else {
+    } else {  # too cold to melt
       melt_atmos <- 0
     }
     

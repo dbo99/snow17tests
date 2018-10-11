@@ -13,7 +13,7 @@ doy  <- df$doy
 elev <- 3000
 
 par <- c(1.1, 0.0, 1.0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1)
-snow17 <- function(par, prcp, tavg, elev, doy, ini.states = c(150, 0, 20, 0, 0.5)) {
+snow17 <- function(par, prcp, tavg, elev, doy, ini.states = c(100, 0, 20, 0, 0.5, 1000)) {
   
  # set parameters (major or minor parameter as assigned by model creator E. Anderson) [units]
                       # guesses from ranges given in papers
@@ -38,11 +38,12 @@ snow17 <- function(par, prcp, tavg, elev, doy, ini.states = c(150, 0, 20, 0, 0.5
  for (i in 1:length(prcp)) {
    
    # Set initial states
-   swe_solids <- ini.states[1]
+   we_solids <- ini.states[1]
    ATI        <- ini.states[2]
-   swe_liquid <- ini.states[3]
-   Deficit    <- ini.states[4]
-   percentarealsnow <- ini.states[5]
+   we_liquid <- ini.states[3]
+   deficit    <- ini.states[4]
+   meanarealswe_to_ai <- ini.states[5]
+   snowdepth_tot <- ini.states[6]
    
    # Set current temperature and precipitation
    t_i <- tavg[i]  # mean air temperature of time step [C]
@@ -87,7 +88,7 @@ if (t_i <= PXTEMP) {
 
 delta_HD_newsnow <- -(t_newsnow * swe_newsnow_gadj)/(80/0.5)
 
-# define Antecedent Temperature Index (represents near surface snow temp from past snow & temp history),
+# define/update Antecedent Temperature Index (represents near surface snow temp from past snow & temp history),
 # most recent air temps weighed by decreasing amounts
 # if new snow w/>6 mm/hr rate, use new snow's temp, otherwise update from last ATI
 
@@ -98,7 +99,7 @@ if (swe_newsnow_gadj > 1.5 * dtp) {
    ATI <- ATI + TIPM_dtt * (t_i - ATI) 
     }
 
-ATI <- min(ATI, 0) #can't exceed 0
+ATI <- min(ATI, 0) #ATI shouldn't exceed 0
 
 ## change (incr. or decr.) in heat deficit due to temperature gradient [mm]
 
@@ -107,9 +108,22 @@ N_Mar21 <- doy[i] - 80
 Sv <- (0.5 * sin((N_Mar21 * 2 * pi)/365)) + 0.5  # seasonal pattern assumed
 Av <- 1  # Seasonal variation adjustment, none when lat < ~54N
 Mf <- dtt/6 * ((Sv * Av * (MFMAX - MFMIN)) + MFMIN)  # seasonally varying non-rain melt factor
-
 t_snowsurf <- min(0, t_i)
+# now with Mf, get the change in heat deficit
 delta_HD_T <- NMF * dtp/6 * Mf/MFMAX * (ATI - t_snowsurf)
+
+##add heat deficit change to SWE!!!
+
+## apply only to snow covered area
+meanarealswe <- ini.states()
+#ai
+#meanarealswe_to_ai <- meanarealswe/ai
+#meanarealswe_to_ai_x <- c(0, 0.07, .1, .13, .17, .2, .24, .27, .32, .49, 1)
+#percentarealsnow_y <- c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1)
+df_arealdeplete <- data.frame( meanarealswe_to_ai_x, percentarealsnow_y)
+prcntarealsnow <- with(df_arealdeplete, approx(meanarealswe_to_ai_x, percentarealsnow_y,  xout = .17)) %>% tail(1) %>% unlist() %>% unname()
+
+
 
 # Snow Melt from the atmosphere
 t_rain <- max(t_i, 0)  # Temperature of rain (deg C), t_i or 0C, whichever greater
@@ -134,78 +148,76 @@ if (RAIN > 0.25 * dtp) {
 }
 
 # Ripeness of the snow cover
-# swe_solids: water equivalent of the ice portion of the snow cover
-# swe_liquid: liquid water in the snow
-    # swe_liquidmaxlim: liquid water storage capacity
+# we_solids: water equivalent of the ice portion of the snow cover
+# we_liquid: liquid water in the snow
+    # we_liquidmaxlim: liquid water storage capacity
     # Qw: Amount of available water due to melt and rain
 
-swe_solids <- swe_solids + swe_newsnow_gadj   # water equivalent of the ice portion of the snow cover [mm]
+we_solids <- we_solids + swe_newsnow_gadj   # water equivalent of the ice portion of the snow cover [mm]
 #E <- 0  # excess liquid water in the snow cover   
 
-Deficit <- max(Deficit + delta_HD_newsnow + delta_HD_T, 0)  # Deficit <- heat deficit [mm]
-if (Deficit > (0.33 * swe_solids)) {      #check manual for 1/3 clarification
+deficit <- max(deficit + delta_HD_newsnow + delta_HD_T, 0)  # deficit <- heat deficit [mm]
+if (deficit > (0.33 * we_solids)) {      #check manual for 1/3 clarification
   # limits of heat deficit
-  Deficit <- 0.33 * swe_solids
+  deficit <- 0.33 * we_solids
 }
 
-if (melt_atmos < swe_solids) {
-  swe_solids <- swe_solids - melt_atmos
+if (melt_atmos < we_solids) {
+  we_solids <- we_solids - melt_atmos
   Qw <- melt_atmos + RAIN
-  swe_liquidmaxlim <- PLWHC * swe_solids
+  we_liquidmaxlim <- PLWHC * we_solids
   
-  if ((Qw + swe_liquid) > (Deficit + Deficit * PLWHC + swe_liquidmaxlim)) {
+  if ((Qw + we_liquid) > (deficit + deficit * PLWHC + we_liquidmaxlim)) {
     # THEN the snow is RIPE
     
-    E <- Qw + swe_liquid - swe_liquidmaxlim - Deficit - (Deficit * PLWHC)  # Excess liquid water [mm]
-    swe_solids <- swe_solids + Deficit  # swe_solids increases because water refreezes as heat deficit is decreased
-    swe_liquid <- swe_liquidmaxlim + PLWHC * Deficit  # fills liquid water capacity
-    Deficit <- 0
+    E <- Qw + we_liquid - we_liquidmaxlim - deficit - (deficit * PLWHC)  # Excess liquid water [mm]
+    we_solids <- we_solids + deficit  # we_solids increases because water refreezes as heat deficit is decreased
+    we_liquid <- we_liquidmaxlim + PLWHC * deficit  # fills liquid water capacity
+    deficit <- 0
     
-  } else if ((Qw + swe_liquid) >= Deficit) {
+  } else if ((Qw + we_liquid) >= deficit) {
     
-    # & [[Qw + swe_liquid] <= [[Deficit*[1+PLWHC]] + swe_liquidmaxlim]] THEN the snow is NOT yet ripe, but ice is being
-    # melted
     
     E <- 0
-    swe_solids <- swe_solids + Deficit  # swe_solids increases because water refreezes as heat deficit is decreased
-    swe_liquid <- swe_liquid + Qw - Deficit
-    Deficit <- 0
+    we_solids <- we_solids + deficit  # we_solids increases because water refreezes as heat deficit is decreased
+    we_liquid <- we_liquid + Qw - deficit
+    deficit <- 0
     
-  } else if ((Qw + swe_liquid) < Deficit) {
+  } else if ((Qw + we_liquid) < deficit) {
  
     # THEN the snow is NOT yet ripe
     E <- 0
-    swe_solids <- swe_solids + Qw + swe_liquid  # swe_solids increases because water refreezes as heat deficit is decreased
-    Deficit <- Deficit - Qw - swe_liquid
+    we_solids <- we_solids + Qw + we_liquid  # we_solids increases because water refreezes as heat deficit is decreased
+    deficit <- deficit - Qw - we_liquid
   }
   
 } else {
   
-  melt_atmos <- swe_solids + swe_liquid  # melt_atmos >= swe_solids
-  swe_solids <- 0
-  swe_liquid <- 0
+  melt_atmos <- we_solids + we_liquid  # melt_atmos >= we_solids
+  we_solids <- 0
+  we_liquid <- 0
   Qw <- melt_atmos + RAIN
   E <- Qw
   
   
 }
 
-if (Deficit == 0) {
+if (deficit == 0) {
   ATI = 0
 }
 
 # Snow melt from the ground - constant daily amount of melt that takes place at the snow-soil interface
 # (if there's more snow than the daily ground melt assumed)
-if (swe_solids > DAYGM) {
+if (we_solids > DAYGM) {
   
-  melt_terra_liqloss <- (DAYGM/swe_solids) * swe_liquid
+  melt_terra_liqloss <- (DAYGM/we_solids) * we_liquid
   melt_terra_solidloss <- DAYGM
   melt_terra <- melt_terra_liqloss + melt_terra_solidloss
-  swe_solids <- swe_solids - melt_terra_solidloss
-  swe_liquid <- swe_liquid - melt_terra_liqloss
+  we_solids <- we_solids - melt_terra_solidloss
+  we_liquid <- we_liquid - melt_terra_liqloss
   
   E <- E + melt_terra
-  SWE <- swe_solids + swe_liquid
+  SWE <- we_solids + we_liquid
   
 } else {
 
@@ -216,7 +228,7 @@ if (swe_solids > DAYGM) {
     }
     
     meltNrain[i] <- E
-    ini.states <- c(swe_solids, ATI, swe_liquid, Deficit)
+    ini.states <- c(we_solids, ATI, we_liquid, deficit, meanarealswe_to_ai, snowdepth_tot)
     
   }
  
@@ -233,4 +245,4 @@ ggplot(df, aes(date, snowmelt)) + geom_line()
 
 
 
-#liqlag <- 5.33 * (1 - exp  ((-0.03*(dtp/6)* swe_solids )/E )   )
+#liqlag <- 5.33 * (1 - exp  ((-0.03*(dtp/6)* we_solids )/E )   )

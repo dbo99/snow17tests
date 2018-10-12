@@ -1,1 +1,1 @@
-# snow17point
+# snow17

@@ -13,7 +13,7 @@ doy  <- df$doy
 elev <- 3000
 
 par <- c(1.1, 0.0, 1.0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1)
-snow17 <- function(par, prcp, tavg, elev, doy, ini.states = c(100, 0, 20, 0, 130, 1000)) {
+snow17 <- function(par, prcp, tavg, elev, doy, ini.states = c(100, 0, 30, 0, 130, 1000)) {
   
  # set parameters (major or minor parameter as assigned by model creator E. Anderson) [units]
                       # guesses from ranges given in papers
@@ -92,7 +92,7 @@ if (t_i <= PXTEMP) {
  ### areal depletion curve - basin specific!
  meanarealwe_to_ai_x <- c(0, 0.07, .1, .13, .17, .2, .24, .27, .32, .49, 1)
  percentarealsnow_y <- c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1)
- df_arealdeplete <- data.frame( meanarealwe_to_ai_x, percentarealsnow_y)
+ df_arealdeplete <- data.frame(meanarealwe_to_ai_x, percentarealsnow_y)
  #prcntarealsnow <- with(df_arealdeplete, approx(meanarealwe_to_ai_x, percentarealsnow_y,  xout = meanarealwe_to_ai)) %>% tail(1) %>% unlist() %>% unname()
  #prcntarealsnow <- paste0(prcntarealsnow) #as.numeric(prcntarealsnow)
  #prcntarealsnow <- as.numeric(prcntarealsnow)
@@ -132,12 +132,12 @@ delta_HD_T <- NMF * dtp/6 * Mf/MFMAX * (ATI - t_snowsurf) * prcntarealsnow
               
 
 # solar & atmospheric snow melt
-t_rain <- max(t_i, 0)  # Temperature of rain (deg C), t_i or 0C, whichever greater
+t_rain <- max(t_i, 0)  # temperature of rain (deg C), t_i or 0C, whichever greater
 if (rain > 0.25 * dtp) {
  # rain-on-snow melt
  stefan <- 6.12 * (10^(-10))  # Stefan-Boltzman constant (mm/K/hr)
- e_sat <- 2.7489 * (10^8) * exp((-4278.63/(t_i + 242.792)))  # Saturated vapor pressure at t_i (mb)
- P_atm <- 33.86 * (29.9 - (0.335 * (elev/100)) + (0.00022 * ((elev/100)^2.4)))  # elevation is in HUNDREDS of meters (this is incorrectly stated in the manual)
+ e_sat <- 2.7489 * (10^8) * exp((-4278.63/(t_i + 242.792)))  # saturated vapor pressure at t_i (mb)
+ P_atm <- 33.86 * (29.9 - (0.335 * (elev/100)) + (0.00022 * ((elev/100)^2.4)))  # elevation is in hundreds of meters (incorrect in the manual)
  term1 <- stefan * dtp * (((t_i + 273)^4) - (273^4))
  term2 <- 0.0125 * rain * t_rain
  term3 <- 8.5 * UADJ * (dtp/6) * ((0.9 * e_sat - 6.11) + (0.00057 * P_atm * t_i))
@@ -156,16 +156,16 @@ if (rain > 0.25 * dtp) {
  melt_satmos <- 0
 }
 
-# ripeness of the snow cover
+# ripeness of the snow cover #
 # we_solids: water equivalent of the ice portion of the snow cover
 # we_liquid: liquid water in the snow
-    # we_liquidmaxlim: liquid water storage capacity
-    # Qw: Amount of available water due to melt and rain
+# we_liquidmaxlim: liquid water storage capacity
+# Qw: Amount of available water due to melt and rain
 
 we_solids <- we_solids + swe_newsnow_gadj   # water equivalent of the ice portion of the snow cover [mm]
 
 
-deficit <- max(deficit + delta_HD_newsnow + delta_HD_T, 0)  # deficit <- heat deficit [mm]
+deficit <- max(deficit + delta_HD_newsnow + delta_HD_T, 0)  # [mm]
 if (deficit > (0.33 * we_solids)) {      #check manual for 1/3 clarification
   # limits of heat deficit
   deficit <- 0.33 * we_solids
@@ -179,7 +179,7 @@ if (melt_satmos < we_solids) {
   if ((Qw + we_liquid) > (deficit + deficit * PLWHC + we_liquidmaxlim)) {
     # snow is ripe!
     
-    E <- Qw + we_liquid - we_liquidmaxlim - deficit - (deficit * PLWHC)  # Excess liquid water [mm]
+    E <- Qw + we_liquid - we_liquidmaxlim - deficit - (deficit * PLWHC)  # excess liquid water [mm]
     we_solids <- we_solids + deficit  # we_solids increases because water refreezes as heat deficit is decreased
     we_liquid <- we_liquidmaxlim + PLWHC * deficit  # fills liquid water capacity
     deficit <- 0
@@ -188,7 +188,7 @@ if (melt_satmos < we_solids) {
     
     
     E <- 0
-    we_solids <- we_solids + deficit  # we_solids increases because water refreezes as heat deficit is decreased
+    we_solids <- we_solids + deficit  # we_solids increase because water refreezes as heat deficit is decreased
     we_liquid <- we_liquid + Qw - deficit
     deficit <- 0
     

@@ -11,7 +11,7 @@ df <- df %>% mutate(date = mdy(date), tavg_c = ((tmax_c + tmin_c)/2), doy = yday
       filter(date > "1988-8-16", date < "1990-8-16")
 
 prcp <- df$p_mm
-tavg <- df$tavg_c + 5
+tavg <- df$tavg_c
 doy  <- df$doy
 
 # input timestep interval in hours, current setup requires each to be the same

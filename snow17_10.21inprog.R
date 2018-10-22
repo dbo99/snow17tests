@@ -241,8 +241,8 @@ if (melt_satmos < we_solid) { # if solar+atmos  melt is less than the ice's wate
     # excess liquid water is solar+atmos melt + rain + existing liquid - total deficit - liquid held by the pack
     excessliquid <- snowsurfavailliq + we_liquid - heatdef - (heatdef * plwhc) - liquidstorcap 
     
-    # increase the just-reduced we_solid, as water 'refreezes' returning pack up to 0C 
-    we_solid <- we_solid + heatdef  #written in manual but seems wrong
+    # complete energy balance by adding in heatdef
+    we_solid <- we_solid + heatdef  
     # liquid water in the pack is equal to the % maximum
     we_liquid <- liquidstorcap 
     heatdef <- 0

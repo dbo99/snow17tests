@@ -2,7 +2,7 @@
 setwd("~/Documents/Rscripts/snow17")
 
 library(tidyverse)
-library(lubridate) #should, but doesn't always load with tidyverse
+library(lubridate) 
 library(data.table)
 #library(plotly)
 

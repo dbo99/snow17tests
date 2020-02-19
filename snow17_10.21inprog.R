@@ -28,7 +28,7 @@ snow17 <- function(par, map, mat, elev, doy,
           ini.tstep.state =  # initialize. assumes timeseries starts late summer
           c(0,   # (1)   we_solid [mm]      
             0,   # (2)   we_liquid [mm]     
-            0,   # (3)   atip [-]           
+            0,   # (3)   atip [C]           
             0,   # (4)   heatdeficit [mm]   
             0,   # (5)   swe [mm]    
             0,   # (6)   swe_b4suffsnewsnow [mm]

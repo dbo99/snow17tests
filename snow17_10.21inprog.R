@@ -1,10 +1,6 @@
-{rm(list = ls()) 
-setwd("~/Documents/Rscripts/snow17")
-
 library(tidyverse)
 library(lubridate) 
 library(data.table)
-#library(plotly)
 
 tstep         <- seq(from=as.POSIXct("1984-10-1 0:00", tz="UTC"), to=as.POSIXct("2010-9-30 18:00", tz="UTC"), by="6 hours")  
 csv_mat       <- read_csv("sbrc1up_mat.csv") #read-in csv temp timeseries
